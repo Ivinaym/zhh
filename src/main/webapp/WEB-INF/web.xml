@@ -1,0 +1,27 @@
+<!DOCTYPE web-app PUBLIC
+        "-//Sun Microsystems, Inc.//DTD Web Application 2.3//EN"
+        "http://java.sun.com/dtd/web-app_2_3.dtd" >
+
+<web-app>
+    <display-name>Archetype Created Web Application</display-name>
+    <!-- 声明Servlet对象 -->
+    <servlet>
+        <!-- 上面一句指定Servlet对象的名称 -->
+        <servlet-name>InventoryConctroller</servlet-name>
+        <!-- 上面一句指定Servlet对象的完整位置，包含包名和类名 -->
+        <servlet-class>org.com.yzh.framework.springmvc.servlet.YzhDispatcherServlet</servlet-class>
+        <init-param>
+            <param-name>contextConfigLocation</param-name>
+            <param-value>AplicationContext.properties</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>InventoryConctroller</servlet-name>
+        <!-- 映射Servlet -->
+        <!--<servlet-name>与上面<Servlet>标签的<servlet-name>元素相对应，不可以随便起名  -->
+        <url-pattern>/*</url-pattern>
+        <!-- 上面一句话用于映射访问URL -->
+    </servlet-mapping>
+
+</web-app>
