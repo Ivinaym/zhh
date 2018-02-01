@@ -4,6 +4,8 @@ package org.com.yzh.framework.springmvc.test;
 import org.com.yzh.framework.springmvc.annotation.Controller;
 import org.testng.annotations.Test;
 
+import java.lang.reflect.Method;
+
 /**
  * @ClassName: DemoTest
  * @Description: That's the purpose of the class
@@ -25,6 +27,12 @@ public class DemoTest {
 
         } else {
             System.out.println("666666666666");
+        }
+
+
+        Method[] methods = clazz.getDeclaredMethods();
+        for (Method method : methods) {
+            System.out.println(method.getName());
         }
     }
 }

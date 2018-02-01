@@ -24,7 +24,7 @@ public class InventoryConctroller {
     private InventroryService inventroryService;
 
     @Method("/quary/name.json")
-    private void quaryName(HttpServletRequest req, HttpServletResponse rep, @Param("name") String name) {
+    public void quaryName(HttpServletRequest req, HttpServletResponse rep, @Param("name") String name) {
         String quaryName = inventroryService.quaryName(name);
         try {
             rep.getWriter().write(quaryName);

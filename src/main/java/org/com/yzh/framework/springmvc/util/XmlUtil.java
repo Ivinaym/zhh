@@ -30,13 +30,11 @@ import java.util.Date;
  * @version V1.0
  * @see
  */
-@SuppressWarnings("ALL")
 public class XmlUtil {
 
 
     public static void copyFile(File oldfile, String newPath, String newname) {
         try {
-            //int bytesum = 0;
             int byteread;
             if (newname != null && !"".equals(newname)) {
                 newPath = newPath + File.separator + newname;
@@ -46,8 +44,6 @@ public class XmlUtil {
                 FileOutputStream fs = new FileOutputStream(newPath);
                 byte[] buffer = new byte[1444];
                 while ((byteread = inStream.read(buffer)) != -1) {
-                    //bytesum += byteread;
-                    //System.out.println(bytesum);
                     fs.write(buffer, 0, byteread);
                 }
                 inStream.close();

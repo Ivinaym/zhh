@@ -2,6 +2,7 @@ package org.com.yzh.framework.springmvc.servlet;
 
 import org.com.yzh.framework.springmvc.annotation.Autowired;
 import org.com.yzh.framework.springmvc.annotation.Controller;
+import org.com.yzh.framework.springmvc.annotation.Path;
 import org.com.yzh.framework.springmvc.annotation.Service;
 import org.com.yzh.framework.springmvc.util.XmlUtil;
 
@@ -13,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
 
@@ -23,11 +25,12 @@ import java.util.*;
  * @Date 2018-01-23 11:23
  * @Version v.1.0.0
  */
-public class YzhDispatcherServlet extends HttpServlet implements SingleThreadModel {
+public class YzhDispatcherServlet extends HttpServlet {
 
     private List<String> list = new ArrayList<>();
     private Properties prop = new Properties();
     private Map<String, Object> beans = new HashMap<>(3);
+    private Map<String, Method> handlerMaping = new HashMap<>();
 
 //    private AtomicReference<List<String>> atomicReferenceList = new AtomicReference<>();
 //    private AtomicReference<Properties> atomicReferenceProperties = new AtomicReference<>();
@@ -72,7 +75,7 @@ public class YzhDispatcherServlet extends HttpServlet implements SingleThreadMod
         initHandlerMaping();
 
         /*请求*/
-        System.out.println("初始化完成----------------- " + beans);
+        System.out.println("初始化完成----------------- " + handlerMaping);
 
     }
 
@@ -196,9 +199,27 @@ public class YzhDispatcherServlet extends HttpServlet implements SingleThreadMod
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         //通过用户请求的URL,找到对应的method,通过反射调用,并返回其结果
-        //String header = req.getParameter("name");
-        //System.out.println("--------------------");
-        // System.out.println(header);
+        try {
+            doDisPatch(req, resp);
+        } catch (Exception e) {
+            resp.getWriter().write("500 Exception......!  Detail --> " + Arrays.toString(e.getStackTrace()));
+        }
+    }
+
+    private void doDisPatch(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        String uri = req.getRequestURI();
+
+        String contextPath = req.getContextPath();
+
+        uri = uri.replace(contextPath, "").replaceAll("/+", "/");
+
+        Method method = handlerMaping.get(uri);
+        if (method == null) {
+            throw new Exception("uri:" + uri + " is not exit.....    404 Exception! ");
+        } else {
+            //method.invoke()
+        }
+        System.out.println(method);
     }
 
     private void doLoadConfig(ServletConfig config) {
@@ -224,8 +245,41 @@ public class YzhDispatcherServlet extends HttpServlet implements SingleThreadMod
         }
     }
 
+    @SuppressWarnings("ReflectionForUnavailableAnnotation")
     private void initHandlerMaping() {
 
+        if (beans.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, Object> entry : beans.entrySet()) {
+
+            Class<?> clazz = entry.getValue().getClass();
+
+            if (clazz.isAnnotationPresent(Controller.class)) {
+
+                String url = "";
+                if (clazz.isAnnotationPresent(Path.class)) {
+                    Path path = clazz.getAnnotation(Path.class);
+                    url = path.value();
+                }
+
+                Method[] methods = clazz.getMethods();
+
+                for (Method method : methods) {
+
+                    if (method.isAnnotationPresent(org.com.yzh.framework.springmvc.annotation.Method.class)) {
+
+                        org.com.yzh.framework.springmvc.annotation.Method methodPath = method.getAnnotation(org.com.yzh.framework.springmvc.annotation.Method.class);
+
+                        url = (url + "/" + methodPath.value().trim()).replaceAll("/+", "/");
+
+                        handlerMaping.put(url, method);
+                    }
+                }
+
+            }
+        }
     }
 
     private void initAtoreid() {
@@ -251,7 +305,7 @@ public class YzhDispatcherServlet extends HttpServlet implements SingleThreadMod
                     if ("".equals(beanName)) {
                         beanName = field.getType().getName();
                     }
-                    field.set(bean.getValue(),beans.get(beanName));
+                    field.set(bean.getValue(), beans.get(beanName));
                 }
             } catch (Exception e) {
                 e.printStackTrace();
