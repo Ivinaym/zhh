@@ -17,7 +17,9 @@ import java.io.IOException;
 @Controller
 @Path("/invt")
 public class InventoryConctroller {
-
+    /**
+     * yzhh
+     */
     @Autowired
     private InventroryService inventroryService;
 
