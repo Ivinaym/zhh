@@ -25,6 +25,7 @@ public class InventoryConctroller {
 
     @Method("/quary/name.json")
     public void quaryName(HttpServletRequest req, HttpServletResponse rep, @Param("name") String name) {
+        rep.setContentType("text/html;charset=utf-8");
         String quaryName = inventroryService.quaryName(name);
         try {
             rep.getWriter().write(quaryName);

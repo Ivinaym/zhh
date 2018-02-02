@@ -4,7 +4,6 @@ import org.com.yzh.framework.springmvc.annotation.Param;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -32,24 +31,39 @@ public class Handler {
     private Map<String, Integer> paramIndexMaping;
 
 
-    public Handler(Object contorller, Method method, Pattern pattern) {
+    public Handler(Object contorller, Method method, Pattern pattern, Map<String, Integer> paramIndexMaping) {
         this.contorller = contorller;
         this.method = method;
         this.pattern = pattern;
-
-        paramIndexMaping = new HashMap<>();
+        this.paramIndexMaping = paramIndexMaping;
 
         putParamIndexMaping(method);
     }
 
+    public Object getContorller() {
+        return contorller;
+    }
+
+    public Method getMethod() {
+        return method;
+    }
+
+    public Pattern getPattern() {
+        return pattern;
+    }
+
+    public Map<String, Integer> getParamIndexMaping() {
+        return paramIndexMaping;
+    }
+
     private void putParamIndexMaping(Method method) {
-        /**
+        /*
          * 提取方法加了注解的参数
          */
         Annotation[][] annotations = method.getParameterAnnotations();
         for (int i = 0; i < annotations.length; i++) {
-            for (Annotation annotation : annotations[i]){
-                if ( annotation instanceof Param) {
+            for (Annotation annotation : annotations[i]) {
+                if (annotation instanceof Param) {
 
                 }
             }

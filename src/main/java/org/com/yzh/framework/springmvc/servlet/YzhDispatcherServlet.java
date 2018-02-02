@@ -1,9 +1,7 @@
 package org.com.yzh.framework.springmvc.servlet;
 
-import org.com.yzh.framework.springmvc.annotation.Autowired;
-import org.com.yzh.framework.springmvc.annotation.Controller;
-import org.com.yzh.framework.springmvc.annotation.Path;
-import org.com.yzh.framework.springmvc.annotation.Service;
+import org.com.yzh.framework.springmvc.annotation.*;
+import org.com.yzh.framework.springmvc.util.Handler;
 import org.com.yzh.framework.springmvc.util.XmlUtil;
 
 import javax.servlet.*;
@@ -13,10 +11,12 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * @ClassName: YzhDispatcherServlet
@@ -30,11 +30,13 @@ public class YzhDispatcherServlet extends HttpServlet {
     private List<String> list = new ArrayList<>();
     private Properties prop = new Properties();
     private Map<String, Object> beans = new HashMap<>(3);
-    private Map<String, Method> handlerMaping = new HashMap<>();
+    private List<Handler> handlerMapping = new ArrayList<>();
 
-//    private AtomicReference<List<String>> atomicReferenceList = new AtomicReference<>();
-//    private AtomicReference<Properties> atomicReferenceProperties = new AtomicReference<>();
-//    private AtomicReference<Map<String, Object>> atomicReferenceMap = new AtomicReference<>();
+    //    private Map<String, Method> handlerMaping = new HashMap<>();
+
+    //    private AtomicReference<List<String>> atomicReferenceList = new AtomicReference<>();
+    //    private AtomicReference<Properties> atomicReferenceProperties = new AtomicReference<>();
+    //    private AtomicReference<Map<String, Object>> atomicReferenceMap = new AtomicReference<>();
 
     /**
      * Called by the servlet container to indicate to a servlet that the
@@ -72,10 +74,12 @@ public class YzhDispatcherServlet extends HttpServlet {
         initAtoreid();
 
         /*5.初始化HandlerMaping,将@Method中定义的内容和@Controller中Method关联并加入容器中*/
-        initHandlerMaping();
+        //initHandlerMaping();
+
+        handlerMapping();
 
         /*请求*/
-        System.out.println("初始化完成----------------- " + handlerMaping);
+        System.out.println("初始化完成----------------- " + handlerMapping);
 
     }
 
@@ -140,7 +144,7 @@ public class YzhDispatcherServlet extends HttpServlet {
      * @see ServletResponse#setContentType
      */
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         this.doPost(req, resp);
     }
 
@@ -197,29 +201,40 @@ public class YzhDispatcherServlet extends HttpServlet {
      * @see ServletResponse#setContentType
      */
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         //通过用户请求的URL,找到对应的method,通过反射调用,并返回其结果
-        try {
-            doDisPatch(req, resp);
-        } catch (Exception e) {
-            resp.getWriter().write("500 Exception......!  Detail --> " + Arrays.toString(e.getStackTrace()));
-        }
+        doDisPatch(req, resp);
     }
 
-    private void doDisPatch(HttpServletRequest req, HttpServletResponse resp) throws Exception {
-        String uri = req.getRequestURI();
+    private void doDisPatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        /*String uri = req.getRequestURI();
 
         String contextPath = req.getContextPath();
 
         uri = uri.replace(contextPath, "").replaceAll("/+", "/");
 
-        Method method = handlerMaping.get(uri);
-        if (method == null) {
+        Handler handler = XmlUtil.getHandler(req, new ArrayList<Handler>());
+
+        //Method method = handlerMaping.get(uri);
+
+        if (handler == null) {
             throw new Exception("uri:" + uri + " is not exit.....    404 Exception! ");
         } else {
             //method.invoke()
         }
-        System.out.println(method);
+        //System.out.println(method);*/
+
+        try {
+            //从上面已经初始化的信息中匹配
+            //拿着用户请求url去找到其对应的Method
+            boolean isMatcher = XmlUtil.pattern(req, resp, handlerMapping);
+            if (!isMatcher) {
+                resp.getWriter().write("404 Not Found!");
+            }
+        } catch (Exception e) {
+            resp.getWriter().write("500 Exception,Details:\r\n" + e.getMessage() + "\r\n" +
+                    Arrays.toString(e.getStackTrace()).replaceAll("\\[\\]", "").replaceAll(",\\s", "\r\n"));
+        }
     }
 
     private void doLoadConfig(ServletConfig config) {
@@ -245,7 +260,6 @@ public class YzhDispatcherServlet extends HttpServlet {
         }
     }
 
-    @SuppressWarnings("ReflectionForUnavailableAnnotation")
     private void initHandlerMaping() {
 
         if (beans.isEmpty()) {
@@ -274,7 +288,7 @@ public class YzhDispatcherServlet extends HttpServlet {
 
                         url = (url + "/" + methodPath.value().trim()).replaceAll("/+", "/");
 
-                        handlerMaping.put(url, method);
+                        //handlerMaping.put(url, method);
                     }
                 }
 
@@ -354,6 +368,68 @@ public class YzhDispatcherServlet extends HttpServlet {
             e.printStackTrace();
         }
 
+
+    }
+
+    private void handlerMapping() {
+
+        if (beans.isEmpty()) {
+            return;
+        }
+
+        for (Map.Entry<String, Object> entry : beans.entrySet()) {
+
+            Class<?> clazz = entry.getValue().getClass();
+            if (!clazz.isAnnotationPresent(Controller.class)) {
+                continue;
+            }
+
+            String url = "";
+            if (clazz.isAnnotationPresent(Path.class)) {
+                Path requstMapping = clazz.getAnnotation(Path.class);
+                url = requstMapping.value();
+            }
+
+            Method[] methods = clazz.getMethods();
+            for (Method method : methods) {
+
+                if (!method.isAnnotationPresent(org.com.yzh.framework.springmvc.annotation.Method.class)) {
+                    continue;
+                }
+
+                org.com.yzh.framework.springmvc.annotation.Method requstMapping = method.getAnnotation(org.com.yzh.framework.springmvc.annotation.Method.class);
+                String customRegex = ("/" + url + requstMapping.value()).replaceAll("/+", "/");
+
+                String regex = customRegex.replaceAll("\\*", ".*");
+
+                Map<String, Integer> pm = new HashMap<>();
+
+                Annotation[][] pa = method.getParameterAnnotations();
+                for (int i = 0; i < pa.length; i++) {
+                    for (Annotation a : pa[i]) {
+                        if (a instanceof Param) {
+                            String paramName = ((Param) a).value();
+                            if (!"".equals(paramName.trim())) {
+                                pm.put(paramName, i);
+                            }
+                        }
+                    }
+                }
+
+                //提取Request和Response的索引
+                Class<?>[] paramsTypes = method.getParameterTypes();
+                for (int i = 0; i < paramsTypes.length; i++) {
+                    Class<?> type = paramsTypes[i];
+                    if (type == HttpServletRequest.class || type == HttpServletResponse.class) {
+                        pm.put(type.getName(), i);
+                    }
+                }
+
+                handlerMapping.add(new Handler(entry.getValue(), method, Pattern.compile(regex), pm));
+
+                System.out.println("Mapping-- " + customRegex + " -- " + method);
+            }
+        }
 
     }
 

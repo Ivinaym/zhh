@@ -1,14 +1,8 @@
-/**
- * File Name:XmlUtil.java
- * Package Name:com.suneee.base.util
- * Description: (That's the purpose of the file)
- * Date:2015年5月12日下午6:24:25
- * Copyright (c) 2015, forint.lee@qq.com All Rights Reserved.
- */
-
 package org.com.yzh.framework.springmvc.util;
 
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
@@ -16,22 +10,27 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+
+import static jdk.nashorn.api.scripting.ScriptUtils.convert;
+
 
 /**
- * ClassName:XmlUtil <br/>
- * Description:That's the purpose of the class Date: 2015年5月12日 下午6:24:25 <br/>
- *
- * @author carten
- * @version V1.0
- * @see
+ * @Description: That's the purpose of the class
+ * @Author: yin.zhh
+ * @Date 2018/2/2 10:31
+ * @Version v.1.0.0
  */
 public class XmlUtil {
-
 
     public static void copyFile(File oldfile, String newPath, String newname) {
         try {
@@ -68,7 +67,7 @@ public class XmlUtil {
 
     /**
      * 根据属性名获取属性值
-     * */
+     */
     private static Object getFieldValueByName(String fieldName, Object o) {
         try {
             String firstLetter = fieldName.substring(0, 1).toUpperCase();
@@ -103,7 +102,7 @@ public class XmlUtil {
 
     /**
      * 根据属性名获取属性值
-     * */
+     */
     public static Object setFieldValue(String fieldName, String value, Object o) {
         try {
             Method method = getSetMethod(o.getClass(), fieldName);
@@ -142,12 +141,12 @@ public class XmlUtil {
     /**
      * 获取xml文件的根节点名字
      *
-     * @Title: getFirstNodeName
-     * @Description: (That ' s the purpose of the method)
      * @param file
      * @return
      * @throws Exception
      * @throws
+     * @Title: getFirstNodeName
+     * @Description: (That ' s the purpose of the method)
      */
     public static String getFirstNodeName(File file) throws Exception {
         try {
@@ -166,6 +165,140 @@ public class XmlUtil {
         if (str == null) {
             throw new NullPointerException("传入的字符串不能为空!");
         }
+        char[] chars = str.toCharArray();
+        chars[0] += 32;
+        return String.valueOf(chars);
+
+    }
+
+
+    public static Handler getHandler(HttpServletRequest req, List<Handler> handlerMaping) {
+
+        if (handlerMaping.isEmpty()) {
+            return null;
+        }
+
+        String uri = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        uri = uri.replace(contextPath, "").replaceAll("/+", "/");
+
+        for (Handler handler : handlerMaping) {
+            Matcher matcher = handler.getPattern().matcher(uri);
+            if (matcher.matches()) {
+                return handler;
+            }
+        }
+        return null;
+    }
+
+
+    public static void invoke(Handler handler, HttpServletRequest req, HttpServletResponse rep) throws InvocationTargetException, IllegalAccessException {
+        //获取方法的参数列表
+        Class<?>[] parameterTypes = handler.getMethod().getParameterTypes();
+
+        //保存所有需要赋值的参数值
+        Object[] paramValues = new Object[parameterTypes.length];
+
+        Map parameterMap = req.getParameterMap();
+        for (Object o : parameterMap.entrySet()) {
+            Map.Entry<String, String[]> entry = (Map.Entry<String, String[]>) o;
+
+            String value = Arrays.toString(entry.getValue()).replaceAll("\\[|\\]", "").replaceAll(",\\s", ",");
+
+            //找到匹配对象,则开始填充数值
+            if (handler.getParamIndexMaping().containsKey(entry.getKey())) {
+                Integer integer = handler.getParamIndexMaping().get(entry.getKey());
+                paramValues[integer] = convert(parameterTypes[integer], value);
+            }
+
+        }
+
+        //设置方法中的request对象和response对象
+
+        Integer intRequest = handler.getParamIndexMaping().get(HttpServletRequest.class.getName());
+        paramValues[intRequest] = req;
+
+        Integer intResponse = handler.getParamIndexMaping().get(HttpServletResponse.class.getName());
+        paramValues[intResponse] = rep;
+
+        handler.getMethod().invoke(handler.getContorller(), paramValues);
+    }
+
+    public static boolean pattern(HttpServletRequest req, HttpServletResponse resp, List<Handler> handlerMapping) throws Exception {
+
+        //throw new Exception("这是一个假象，是我自己定义异常，弄着玩的");
+        if (handlerMapping.isEmpty()) {
+            return false;
+        }
+
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        url = url.replace(contextPath, "").replaceAll("/+", "/");
+
+
+        for (Handler handler : handlerMapping) {
+            Matcher matcher = handler.getPattern().matcher(url);
+
+            if (!matcher.matches()) {
+                continue;
+            }
+
+            Class<?>[] paramTypes = handler.getMethod().getParameterTypes();
+
+            Object[] paramValues = new Object[paramTypes.length];
+
+            Map<String, String[]> params = req.getParameterMap();
+
+            for (Map.Entry<String, String[]> param : params.entrySet()) {
+
+                String value = Arrays.toString(param.getValue()).replaceAll("\\]|\\[", "").replaceAll(",\\s", ",");
+
+                if (!handler.getParamIndexMaping().containsKey(param.getKey())) {
+                    continue;
+                }
+
+                int index = handler.getParamIndexMaping().get(param.getKey());
+
+                //涉及到类型转换
+                paramValues[index] = castStringValue(value, paramTypes[index]);
+
+            }
+
+
+            //
+            int reqIndex = handler.getParamIndexMaping().get(HttpServletRequest.class.getName());
+            paramValues[reqIndex] = req;
+
+            int repIndex = handler.getParamIndexMaping().get(HttpServletResponse.class.getName());
+            paramValues[repIndex] = resp;
+
+            //需要对象.方法
+            handler.getMethod().invoke(handler.getContorller(), paramValues);
+
+            return true;
+        }
+        return false;
+
+    }
+
+
+    private static Object castStringValue(String value, Class<?> clazz) {
+
+        if (clazz == String.class) {
+            return value;
+        } else if (clazz == Integer.class) {
+            return Integer.valueOf(value);
+        } else if (clazz == int.class) {
+            return Integer.valueOf(value);
+        } else {
+            return null;
+        }
+
+    }
+
+
+    public String lowerFirstChar(String str) {
+
         char[] chars = str.toCharArray();
         chars[0] += 32;
         return String.valueOf(chars);
