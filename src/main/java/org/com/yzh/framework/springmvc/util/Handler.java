@@ -1,8 +1,5 @@
 package org.com.yzh.framework.springmvc.util;
 
-import org.com.yzh.framework.springmvc.annotation.Param;
-
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -36,8 +33,6 @@ public class Handler {
         this.method = method;
         this.pattern = pattern;
         this.paramIndexMaping = paramIndexMaping;
-
-        putParamIndexMaping(method);
     }
 
     public Object getContorller() {
@@ -56,18 +51,4 @@ public class Handler {
         return paramIndexMaping;
     }
 
-    private void putParamIndexMaping(Method method) {
-        /*
-         * 提取方法加了注解的参数
-         */
-        Annotation[][] annotations = method.getParameterAnnotations();
-        for (int i = 0; i < annotations.length; i++) {
-            for (Annotation annotation : annotations[i]) {
-                if (annotation instanceof Param) {
-
-                }
-            }
-        }
-
-    }
 }

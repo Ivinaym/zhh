@@ -2,7 +2,7 @@ package org.com.yzh.framework.springmvc.servlet;
 
 import org.com.yzh.framework.springmvc.annotation.*;
 import org.com.yzh.framework.springmvc.util.Handler;
-import org.com.yzh.framework.springmvc.util.XmlUtil;
+import org.com.yzh.framework.springmvc.util.BeanUtil;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServlet;
@@ -30,13 +30,7 @@ public class YzhDispatcherServlet extends HttpServlet {
     private List<String> list = new ArrayList<>();
     private Properties prop = new Properties();
     private Map<String, Object> beans = new HashMap<>(3);
-    private List<Handler> handlerMapping = new ArrayList<>();
-
-    //    private Map<String, Method> handlerMaping = new HashMap<>();
-
-    //    private AtomicReference<List<String>> atomicReferenceList = new AtomicReference<>();
-    //    private AtomicReference<Properties> atomicReferenceProperties = new AtomicReference<>();
-    //    private AtomicReference<Map<String, Object>> atomicReferenceMap = new AtomicReference<>();
+    private List<Handler> handlerMapping = new ArrayList<>(1);
 
     /**
      * Called by the servlet container to indicate to a servlet that the
@@ -56,10 +50,7 @@ public class YzhDispatcherServlet extends HttpServlet {
      * @see UnavailableException
      */
     @Override
-    public void init(ServletConfig config) throws ServletException {
-//        atomicReferenceList.set(new ArrayList<String>());
-//        atomicReferenceProperties.set(new Properties());
-//        atomicReferenceMap.set(new HashMap<String, Object>(5));
+    public void init(ServletConfig config) {
         /*1.加载配置文件*/
         doLoadConfig(config);
 
@@ -74,9 +65,7 @@ public class YzhDispatcherServlet extends HttpServlet {
         initAtoreid();
 
         /*5.初始化HandlerMaping,将@Method中定义的内容和@Controller中Method关联并加入容器中*/
-        //initHandlerMaping();
-
-        handlerMapping();
+        initHandlerMaping();
 
         /*请求*/
         System.out.println("初始化完成----------------- " + handlerMapping);
@@ -207,33 +196,16 @@ public class YzhDispatcherServlet extends HttpServlet {
     }
 
     private void doDisPatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        /*String uri = req.getRequestURI();
-
-        String contextPath = req.getContextPath();
-
-        uri = uri.replace(contextPath, "").replaceAll("/+", "/");
-
-        Handler handler = XmlUtil.getHandler(req, new ArrayList<Handler>());
-
-        //Method method = handlerMaping.get(uri);
-
-        if (handler == null) {
-            throw new Exception("uri:" + uri + " is not exit.....    404 Exception! ");
-        } else {
-            //method.invoke()
-        }
-        //System.out.println(method);*/
 
         try {
-            //从上面已经初始化的信息中匹配
-            //拿着用户请求url去找到其对应的Method
-            boolean isMatcher = XmlUtil.pattern(req, resp, handlerMapping);
+            //从上面已经初始化的信息中匹配,拿着用户请求url去找到其对应的Method
+            boolean isMatcher = BeanUtil.invoke(req, resp, handlerMapping);
             if (!isMatcher) {
                 resp.getWriter().write("404 Not Found!");
             }
         } catch (Exception e) {
             resp.getWriter().write("500 Exception,Details:\r\n" + e.getMessage() + "\r\n" +
-                    Arrays.toString(e.getStackTrace()).replaceAll("\\[\\]", "").replaceAll(",\\s", "\r\n"));
+                    Arrays.toString(e.getStackTrace()).replaceAll("\\[]", "").replaceAll(",\\s", "\r\n"));
         }
     }
 
@@ -260,41 +232,6 @@ public class YzhDispatcherServlet extends HttpServlet {
         }
     }
 
-    private void initHandlerMaping() {
-
-        if (beans.isEmpty()) {
-            return;
-        }
-
-        for (Map.Entry<String, Object> entry : beans.entrySet()) {
-
-            Class<?> clazz = entry.getValue().getClass();
-
-            if (clazz.isAnnotationPresent(Controller.class)) {
-
-                String url = "";
-                if (clazz.isAnnotationPresent(Path.class)) {
-                    Path path = clazz.getAnnotation(Path.class);
-                    url = path.value();
-                }
-
-                Method[] methods = clazz.getMethods();
-
-                for (Method method : methods) {
-
-                    if (method.isAnnotationPresent(org.com.yzh.framework.springmvc.annotation.Method.class)) {
-
-                        org.com.yzh.framework.springmvc.annotation.Method methodPath = method.getAnnotation(org.com.yzh.framework.springmvc.annotation.Method.class);
-
-                        url = (url + "/" + methodPath.value().trim()).replaceAll("/+", "/");
-
-                        //handlerMaping.put(url, method);
-                    }
-                }
-
-            }
-        }
-    }
 
     private void initAtoreid() {
         if (beans.isEmpty()) {
@@ -339,7 +276,7 @@ public class YzhDispatcherServlet extends HttpServlet {
                 if (clazz.isAnnotationPresent(Controller.class)) {
                     Object objcet = clazz.newInstance();
 
-                    beans.put(XmlUtil.toLowerFirst(clazz.getSimpleName()), objcet);
+                    beans.put(BeanUtil.toLowerFirst(clazz.getSimpleName()), objcet);
 
                 } else if (clazz.isAnnotationPresent(Service.class)) {
 
@@ -349,7 +286,7 @@ public class YzhDispatcherServlet extends HttpServlet {
 
                     if ("".equals(value)) {
                         //默认beanName,首字母小写
-                        beans.put(XmlUtil.toLowerFirst(clazz.getSimpleName()), objcet);
+                        beans.put(BeanUtil.toLowerFirst(clazz.getSimpleName()), objcet);
                     } else {
                         //自定义beanName
                         beans.put(value, objcet);
@@ -371,7 +308,7 @@ public class YzhDispatcherServlet extends HttpServlet {
 
     }
 
-    private void handlerMapping() {
+    private void initHandlerMaping() {
 
         if (beans.isEmpty()) {
             return;

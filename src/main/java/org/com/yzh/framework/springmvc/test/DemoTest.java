@@ -16,7 +16,7 @@ import java.lang.reflect.Method;
 public class DemoTest {
 
     @Test
-    public void demo01() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    public void demo01() throws ClassNotFoundException {
         Class<?> clazz = Class.forName("org.com.yzh.framework.springmvc.controller.InventoryConctroller");
 
         boolean annotation = clazz.isAnnotation();
