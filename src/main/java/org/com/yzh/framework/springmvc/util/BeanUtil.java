@@ -20,8 +20,8 @@ public class BeanUtil {
 
     public static boolean invoke(HttpServletRequest req, HttpServletResponse resp, List<Handler> handlerMapping) throws Exception {
 
-        //throw new Exception("这是一个假象，是我自己定义异常，弄着玩的");
         if (handlerMapping.isEmpty()) {
+            //throw new Exception("这是一个假象，是我自己定义异常，弄着玩的");
             return false;
         }
 

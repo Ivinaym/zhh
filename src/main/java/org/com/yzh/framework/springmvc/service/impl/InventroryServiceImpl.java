@@ -1,5 +1,6 @@
 package org.com.yzh.framework.springmvc.service.impl;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.com.yzh.framework.springmvc.annotation.Service;
 import org.com.yzh.framework.springmvc.service.InventroryService;
 
@@ -14,8 +15,26 @@ import org.com.yzh.framework.springmvc.service.InventroryService;
 @Service
 public class InventroryServiceImpl implements InventroryService {
 
+    private static int i = 1;
+
+    /**
+     * 令牌机制 qps = 10
+     */
+    private RateLimiter rateLimiter = RateLimiter.create(10);
+
     @Override
     public String quaryName(String name) {
         return "My name is " + name;
+    }
+
+    @Override
+    public void doRequest() {
+
+        if (rateLimiter.tryAcquire()) {
+            System.out.println("请求成功!" + i++);
+        } else {
+            System.out.println("请求过多,请稍后再试.....");
+        }
+
     }
 }

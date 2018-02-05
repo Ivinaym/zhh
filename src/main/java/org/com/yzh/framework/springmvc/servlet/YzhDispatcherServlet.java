@@ -67,9 +67,6 @@ public class YzhDispatcherServlet extends HttpServlet {
         /*5.初始化HandlerMaping,将@Method中定义的内容和@Controller中Method关联并加入容器中*/
         initHandlerMaping();
 
-        /*请求*/
-        System.out.println("初始化完成----------------- " + handlerMapping);
-
     }
 
     /**
@@ -335,7 +332,7 @@ public class YzhDispatcherServlet extends HttpServlet {
                 }
 
                 org.com.yzh.framework.springmvc.annotation.Method requstMapping = method.getAnnotation(org.com.yzh.framework.springmvc.annotation.Method.class);
-                String customRegex = ("/" + url + requstMapping.value()).replaceAll("/+", "/");
+                String customRegex = ("/" + url + "/" + requstMapping.value()).replaceAll("/+", "/");
 
                 String regex = customRegex.replaceAll("\\*", ".*");
 

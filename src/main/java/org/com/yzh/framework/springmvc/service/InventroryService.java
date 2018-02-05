@@ -17,4 +17,7 @@ public interface InventroryService {
      * @return String
      */
     String quaryName(String name);
+
+
+    void doRequest();
 }

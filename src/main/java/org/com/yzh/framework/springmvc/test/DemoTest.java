@@ -5,6 +5,8 @@ import org.com.yzh.framework.springmvc.annotation.Controller;
 import org.testng.annotations.Test;
 
 import java.lang.reflect.Method;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @ClassName: DemoTest
@@ -33,6 +35,19 @@ public class DemoTest {
         Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
             System.out.println(method.getName());
+        }
+    }
+
+    @Test
+    public void demo02() {
+        String str = "[王五]";
+
+        Pattern pattern = Pattern.compile("[]\\[]");
+        Matcher matcher = pattern.matcher(str);
+        int i = 0;
+        while (matcher.find()) {
+            String group = matcher.group(i);
+            System.out.println(group);
         }
     }
 }
